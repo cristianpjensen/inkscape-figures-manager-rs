@@ -3,6 +3,7 @@ pub mod style;
 use druid::widget::{prelude::*, Align, Flex};
 use druid::widget::{Button, Label};
 use druid::{Application, ClipboardFormat, AppLauncher, Data, Lens, WindowDesc};
+use global_hotkey::{GlobalHotKeyManager, GlobalHotKeyEvent, hotkey::{HotKey, Modifiers, Code}};
 
 #[derive(Clone, Data, Lens)]
 struct State {
@@ -10,19 +11,47 @@ struct State {
 }
 
 pub fn main() {
-    // describe the main window
+    let hotkey_manager = GlobalHotKeyManager::new().expect("Failed to launch hotkey manager");
+    let shift_d = HotKey::new(Some(Modifiers::SHIFT), Code::KeyD);
+    let _ = hotkey_manager.register_all(&[shift_d]);
+
+    let shortcuts = KeyboardShortcuts { shift_d };
+
+    GlobalHotKeyEvent::set_event_handler(Some(move |event| shortcuts.handler(event) ));
+
     let main_window = WindowDesc::new(build_root_widget())
         .title("Inkscape Figures")
         .window_size((400.0, 400.0));
 
-    // create the initial app state
     let initial_state: State = State { message: None };
 
-    // start the application. Here we pass in the application state.
     AppLauncher::with_window(main_window)
         .log_to_console()
         .launch(initial_state)
         .expect("Failed to launch application");
+}
+
+struct KeyboardShortcuts {
+    shift_d: HotKey,
+}
+
+impl KeyboardShortcuts {
+    fn handler(&self, event: GlobalHotKeyEvent) {
+        println!("Event: {:?}", event);
+
+        if event.id == self.shift_d.id() {
+            println!("Shift+D");
+            let mut style = style::Style::new();
+            style.fill_color = Some("white");
+            style.fill_opacity = Some(1.0);
+            style.stroke_color = Some("black");
+            style.stroke_dash = Some(style::StrokeDash::Dotted);
+            style.stroke_width = Some(style::StrokeThickness::Normal);
+            style.marker_end = true;
+
+            set_style(style);
+        }
+    }
 }
 
 fn build_root_widget() -> impl Widget<State> {

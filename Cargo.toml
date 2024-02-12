@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 druid = "0.8.3"
+global-hotkey = "0.4.2"
