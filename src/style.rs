@@ -4,8 +4,8 @@ pub struct Style<'a> {
     pub stroke_color: Option<&'a str>,
     pub stroke_width: Option<StrokeThickness>,
     pub stroke_dash: Option<StrokeDash>,
-    pub marker_start: bool,
-    pub marker_end: bool,
+    pub marker_start: Option<bool>,
+    pub marker_end: Option<bool>,
 }
 
 impl Style<'_> {
@@ -16,8 +16,8 @@ impl Style<'_> {
             stroke_color: None,
             stroke_width: None,
             stroke_dash: None,
-            marker_start: false,
-            marker_end: false,
+            marker_start: None,
+            marker_end: None,
         }
     }
 }
@@ -47,22 +47,26 @@ impl ToString for Style<'_> {
             style_string += &format!("stroke-dasharray:{};", dash.dasharray());
         }
 
-        if self.marker_start {
-            style_string += "marker-start:url(#ArrowWide);";
-        } else {
-            style_string += "marker-start:none;";
+        if let Some(marker_start) = self.marker_start {
+            if marker_start {
+                style_string += "marker-start:url(#ArrowWide);";
+            } else {
+                style_string += "marker-start:none;";
+            }
         }
 
-        if self.marker_end {
-            style_string += "marker-end:url(#ArrowWide);";
-        } else {
-            style_string += "marker-end:none;";
+        if let Some(marker_end) = self.marker_end {
+            if marker_end {
+                style_string += "marker-end:url(#ArrowWide);";
+            } else {
+                style_string += "marker-end:none;";
+            }
         }
 
         // Make SVG string so we can copy-paste the style onto the object
         let mut svg_string = "<?xml version='1.0' encoding='UTF-8' standalone='no'?><svg>".to_string();
 
-        if self.marker_end || self.marker_start {
+        if self.marker_end.is_some_and(|x| x) || self.marker_start.is_some_and(|x| x) {
             svg_string += "
                 <defs id='marker-defs'>
                     <marker

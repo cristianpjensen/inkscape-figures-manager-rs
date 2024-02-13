@@ -4,6 +4,9 @@ use druid::widget::{prelude::*, Align, Flex};
 use druid::widget::Label;
 use druid::{Application, ClipboardFormat, AppLauncher, Data, Lens, WindowDesc};
 use global_hotkey::{GlobalHotKeyManager, GlobalHotKeyEvent, HotKeyState, hotkey::{HotKey, Modifiers, Code}};
+// use livesplit_hotkey::{Hook, Hotkey, KeyCode, Modifiers};
+use rdev::{simulate, EventType, Key, SimulateError};
+use std::{thread, time};
 
 #[derive(Clone, Data, Lens)]
 struct State {
@@ -11,9 +14,28 @@ struct State {
 }
 
 pub fn main() {
+    // let hotkey_hook = Hook::new().expect("Failed to launch hotkey hook");
+
+    // let _ = hotkey_hook.register(Hotkey { key_code: KeyCode::KeyQ, modifiers: Modifiers::ALT }, move || {
+    //     let mut style = style::Style::new();
+
+    //     println!("Stroke: dashed");
+    //     style.stroke_dash = Some(style::StrokeDash::Dashed);
+
+    //     set_style(style);
+
+    //     // send(&EventType::KeyRelease(Key::Alt));
+    //     // send(&EventType::KeyPress(Key::MetaLeft));
+    //     // send(&EventType::KeyPress(Key::ShiftLeft));
+    //     // send(&EventType::KeyPress(Key::KeyV));
+    //     // send(&EventType::KeyRelease(Key::KeyV));
+    //     // send(&EventType::KeyRelease(Key::MetaLeft));
+    //     // send(&EventType::KeyRelease(Key::ShiftLeft));
+    // });
+
     // Set up hotkeys
     let hotkey_manager = GlobalHotKeyManager::new().expect("Failed to launch hotkey manager");
-
+    
     let alt_q = HotKey::new(Some(Modifiers::ALT), Code::KeyQ);
     let alt_w = HotKey::new(Some(Modifiers::ALT), Code::KeyW);
     let alt_e = HotKey::new(Some(Modifiers::ALT), Code::KeyE);
@@ -32,11 +54,12 @@ pub fn main() {
 
     let _ = hotkey_manager.register_all(&[alt_q, alt_w, alt_e, alt_r, alt_t, alt_y, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x, alt_space]);
     let shortcuts = KeyboardShortcuts { alt_q, alt_w, alt_e, alt_r, alt_t, alt_y, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x, alt_space };
+
     GlobalHotKeyEvent::set_event_handler(Some(move |event| shortcuts.handler(event)));
 
     let main_window = WindowDesc::new(build_root_widget())
         .title("Inkscape Figures")
-        .window_size((400.0, 400.0));
+        .window_size((200.0, 200.0));
 
     let initial_state: State = State { message: None };
 
@@ -115,14 +138,14 @@ impl KeyboardShortcuts {
 
         if event.id == self.alt_z.id() || event.id == self.alt_space.id() {
             println!("Marker start");
-            style.marker_start = true
+            style.marker_start = Some(true)
         }
         if event.id == self.alt_x.id() || event.id == self.alt_space.id() {
             println!("Marker end");
-            style.marker_end = true
+            style.marker_end = Some(true)
         }
 
-        set_style(style);
+        set_style(&style);
     }
 }
 
@@ -134,18 +157,37 @@ fn build_root_widget() -> impl Widget<State> {
         }
     });
 
-    // arrange the two widgets vertically, with some padding
-    let layout = Flex::column()
-        .with_child(label);
+    let layout = Flex::column().with_child(label);
 
-    // center the two widgets in the available space
     Align::centered(layout)
 }
 
-fn set_style(style: style::Style) {
+fn set_style(style: &style::Style) {
     let svg_string = style.to_string();
     let mut clipboard = Application::global().clipboard();
 
     let formats = [ ClipboardFormat::new("image/x-inkscape-svg", svg_string), ];
     clipboard.put_formats(&formats);
+
+    paste_style();
+}
+
+fn paste_style() {
+    send(&EventType::KeyRelease(Key::Alt));
+    // send(&EventType::KeyPress(Key::MetaLeft));
+    // send(&EventType::KeyPress(Key::ShiftLeft));
+    send(&EventType::KeyPress(Key::KeyV));
+    // send(&EventType::KeyRelease(Key::MetaLeft));
+    // send(&EventType::KeyRelease(Key::ShiftLeft));
+}
+
+fn send(event_type: &EventType) {
+    let delay = time::Duration::from_millis(20);
+    match simulate(event_type) {
+        Ok(()) => (),
+        Err(SimulateError) => {
+            println!("We could not send {:?}", event_type);
+        }
+    }
+    thread::sleep(delay);
 }
