@@ -1,8 +1,11 @@
+use std::thread;
+use std::time::Duration;
+
 use global_hotkey::hotkey::{Code, Modifiers};
 use global_hotkey::GlobalHotKeyManager;
-use global_hotkey::{GlobalHotKeyEvent, HotKeyState, hotkey::HotKey};
-use crate::style;
-use crate::set_style;
+use global_hotkey::{GlobalHotKeyEvent, hotkey::HotKey};
+use tfc::{Context, Key, KeyboardContext};
+use crate::{clipboard, style};
 
 pub fn setup_hotkeys(hotkey_manager: &GlobalHotKeyManager) -> KeyboardShortcuts {
     let alt_1 = HotKey::new(Some(Modifiers::ALT), Code::Digit1);
@@ -23,7 +26,7 @@ pub fn setup_hotkeys(hotkey_manager: &GlobalHotKeyManager) -> KeyboardShortcuts 
     let alt_space = HotKey::new(Some(Modifiers::ALT), Code::Space);
 
     // Register hotkeys
-    let _ = hotkey_manager.register_all(&[alt_1, alt_2, alt_3, alt_q, alt_w, alt_e, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x, alt_space]);
+    hotkey_manager.register_all(&[alt_1, alt_2, alt_3, alt_q, alt_w, alt_e, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x, alt_space]).unwrap();
 
     KeyboardShortcuts { alt_1, alt_2, alt_3, alt_q, alt_w, alt_e, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x, alt_space }
 }
@@ -46,10 +49,6 @@ pub struct KeyboardShortcuts {
 
 impl KeyboardShortcuts {
     pub fn handler(&self, event: GlobalHotKeyEvent) {
-        if event.state != HotKeyState::Released {
-            return;
-        }
-
         let mut style = style::Style::new();
 
         if event.id == self.alt_1.id() {
@@ -112,4 +111,25 @@ impl KeyboardShortcuts {
 
         set_style(&style);
     }
+}
+
+fn set_style(style: &style::Style) {
+    // put the SVG string with style and proper MIME type (so inkscape
+    // recognizes it) on the clipboard and paste style by pressing META+SHIFT+V
+    let svg_string = style.to_string();
+    clipboard::copy_mime("image/x-inkscape-svg", &svg_string);
+    paste_style();
+}
+
+fn paste_style() {
+    let mut ctx = Context::new().expect("Failed to launch paste context");
+
+    // For OS-specific reasons, it's necessary to wait a moment after
+    // creating the context before generating events.
+    thread::sleep(Duration::from_millis(10));
+    let _ = ctx.key_down(Key::ControlOrMeta);
+    let _ = ctx.key_down(Key::Shift);
+    let _ = ctx.key_click(Key::V);
+    let _ = ctx.key_up(Key::ControlOrMeta);
+    let _ = ctx.key_up(Key::Shift);
 }
