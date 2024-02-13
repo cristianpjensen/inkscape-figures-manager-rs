@@ -25,7 +25,7 @@ impl Style<'_> {
 impl ToString for Style<'_> {
     fn to_string(&self) -> String {
         // Add styles
-        let mut style_string = "".to_string();
+        let mut style_string = "stroke-linejoin:miter;strike-linecap:butt;".to_string();
 
         if let Some(color) = self.fill_color {
             style_string += &format!("fill:{};", color);
