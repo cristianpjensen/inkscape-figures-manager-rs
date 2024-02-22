@@ -1,11 +1,11 @@
 use std::thread;
 use std::time::Duration;
 
-use global_hotkey::hotkey::{Code, Modifiers};
-use global_hotkey::GlobalHotKeyManager;
-use global_hotkey::{GlobalHotKeyEvent, hotkey::HotKey};
-use tfc::{Context, Key, KeyboardContext};
 use crate::{clipboard, style};
+use global_hotkey::hotkey::{Code, Modifiers};
+use global_hotkey::{hotkey::HotKey, GlobalHotKeyEvent};
+use global_hotkey::{GlobalHotKeyManager, HotKeyState};
+use tfc::{Context, Key, KeyboardContext};
 
 pub fn setup_hotkeys(hotkey_manager: &GlobalHotKeyManager) -> KeyboardShortcuts {
     let alt_1 = HotKey::new(Some(Modifiers::ALT), Code::Digit1);
@@ -26,9 +26,28 @@ pub fn setup_hotkeys(hotkey_manager: &GlobalHotKeyManager) -> KeyboardShortcuts 
     let alt_space = HotKey::new(Some(Modifiers::ALT), Code::Space);
 
     // Register hotkeys
-    hotkey_manager.register_all(&[alt_1, alt_2, alt_3, alt_q, alt_w, alt_e, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x, alt_space]).unwrap();
+    hotkey_manager
+        .register_all(&[
+            alt_1, alt_2, alt_3, alt_q, alt_w, alt_e, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x,
+            alt_space,
+        ])
+        .unwrap();
 
-    KeyboardShortcuts { alt_1, alt_2, alt_3, alt_q, alt_w, alt_e, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x, alt_space }
+    KeyboardShortcuts {
+        alt_1,
+        alt_2,
+        alt_3,
+        alt_q,
+        alt_w,
+        alt_e,
+        alt_a,
+        alt_s,
+        alt_d,
+        alt_f,
+        alt_z,
+        alt_x,
+        alt_space,
+    }
 }
 
 pub struct KeyboardShortcuts {
@@ -49,6 +68,11 @@ pub struct KeyboardShortcuts {
 
 impl KeyboardShortcuts {
     pub fn handler(&self, event: GlobalHotKeyEvent) {
+        // Only handle key down events
+        if event.state == HotKeyState::Released {
+            return;
+        }
+
         let mut style = style::Style::new();
 
         if event.id == self.alt_1.id() {
@@ -87,7 +111,8 @@ impl KeyboardShortcuts {
         }
         if event.id == self.alt_d.id() {
             println!("fill:\t\tgray");
-            style.fill_color = Some("#E0E0E0");
+            style.fill_color = Some("#318CE7");
+            style.fill_opacity = Some(0.32);
         }
         if event.id == self.alt_f.id() {
             println!("fill:\t\tblack");
