@@ -69,7 +69,7 @@ fn hotkeys_listener() {
     });
 }
 
-fn autosave_pdf_tex() {
+fn autosave_pdf_tex() -> Result<(), notify::Error> {
     let (tx, rx) = std::sync::mpsc::channel();
     let tx_c = tx.clone();
 
@@ -86,36 +86,34 @@ fn autosave_pdf_tex() {
         move |scan_event| {
             tx.send(Message::Scan(scan_event)).unwrap();
         },
-    )
-    .unwrap();
+    )?;
 
-    watcher
-        .watch(Path::new("figures"), RecursiveMode::Recursive)
-        .unwrap();
+    watcher.watch(Path::new("figures"), RecursiveMode::Recursive)?;
 
     for res in rx {
         match res {
             Message::Event(e) => {
                 if let Ok(e) = e {
                     for path in e.paths {
-                        if let Some(filename) = path.file_name() {
-                            let s = filename.to_string_lossy();
-                            if s.ends_with(".svg") {
-                                let output = std::process::Command::new("inkscape")
-                                    .arg("--export-area-page")
-                                    .arg("--export-dpi=300")
-                                    .arg("--export-type=pdf")
-                                    .arg("--export-latex")
-                                    .arg(format!(
-                                        "--export-filename=figures/{}",
-                                        s.replace(".svg", ".pdf")
-                                    ))
-                                    .output();
+                        if path.extension().is_some_and(|ext| ext == "svg") {
+                            let path_stem = path.file_stem().unwrap().to_string_lossy();
+                            let output = std::process::Command::new("inkscape")
+                                .arg("--export-area-page")
+                                .arg("--export-dpi=300")
+                                .arg("--export-type=pdf")
+                                .arg("--export-latex")
+                                .arg(format!(
+                                    "--export-filename={}",
+                                    path.canonicalize()
+                                        .unwrap()
+                                        .to_string_lossy()
+                                        .replace(".svg", ".pdf")
+                                ))
+                                .output();
 
-                                match output {
-                                    Ok(_) => println!("successfully saved {} as pdf", s),
-                                    Err(_) => println!("error: unsuccessfully saved {} as pdf", s),
-                                }
+                            match output {
+                                Ok(_) => println!("saved as pdf: {path_stem}"),
+                                Err(e) => println!("ERROR: saving {path_stem} as pdf: {e:#?}"),
                             }
                         }
                     }
@@ -123,16 +121,16 @@ fn autosave_pdf_tex() {
             }
             Message::Scan(e) => {
                 if let Ok(path) = e {
-                    if let Some(filename) = path.file_name() {
-                        let s = filename.to_string_lossy();
-                        if s.ends_with(".svg") {
-                            println!("found figure: {}", s);
-                        }
+                    if path.extension().is_some_and(|ext| ext == "svg") {
+                        let path_stem = path.file_stem().unwrap().to_string_lossy();
+                        println!("found figure: {path_stem}");
                     }
                 }
             }
         }
     }
+
+    Ok(())
 }
 
 fn list_figures() {
