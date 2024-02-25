@@ -40,7 +40,11 @@ fn main() {
 
     match &cli.command {
         Commands::Start => {
-            std::thread::spawn(autosave_pdf_tex);
+            std::thread::spawn(|| {
+                if let Err(e) = autosave_pdf_tex() {
+                    eprintln!("ERROR: watching figures directory: {}", e);
+                };
+            });
             hotkeys_listener();
         }
         Commands::List => list_figures(),
@@ -113,7 +117,7 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
 
                             match output {
                                 Ok(_) => println!("saved as pdf: {path_stem}"),
-                                Err(e) => println!("ERROR: saving {path_stem} as pdf: {e:#?}"),
+                                Err(e) => eprintln!("ERROR: saving {path_stem} as pdf: {e:#?}"),
                             }
                         }
                     }
