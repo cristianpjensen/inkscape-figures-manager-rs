@@ -64,7 +64,8 @@ impl ToString for Style<'_> {
         }
 
         // Make SVG string so we can copy-paste the style onto the object
-        let mut svg_string = "<?xml version='1.0' encoding='UTF-8' standalone='no'?><svg>".to_string();
+        let mut svg_string =
+            "<?xml version='1.0' encoding='UTF-8' standalone='no'?><svg>".to_string();
 
         if self.marker_end.is_some_and(|x| x) || self.marker_start.is_some_and(|x| x) {
             svg_string += "
@@ -89,7 +90,7 @@ impl ToString for Style<'_> {
             ";
         }
 
-        svg_string +=  &format!("<inkscape:clipboard style='{style_string}' /></svg>");
+        svg_string += &format!("<inkscape:clipboard style='{style_string}' /></svg>");
 
         return svg_string;
     }
