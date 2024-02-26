@@ -29,7 +29,8 @@ enum Commands {
     /// Lists all figures for the current document, i.e., all SVGs in the `figures/` subdirectory.
     List,
     /// Creates a new figure for the current document. Give the path to the figure, including the `figures/` subdirectory.
-    /// E.g., `ifm new figures/my_figure.svg`.
+    /// E.g., `ifm new figures/my_figure.svg`. Make sure that `$HOME/.config/ifm/template.svg` exists, since that will be
+    /// the template that will be copied to the new file.
     New { path: String },
     /// Edits an existing figure for the current document. Give the path to the figure, including the `figures/`
     /// subdirectory. E.g., `ifm edit figures/my_figure.svg`.
@@ -145,7 +146,7 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
 }
 
 fn list_figures() {
-    for entry in glob("figures/**/*.svg").expect("should be able to glob figures/ directory") {
+    for entry in glob("figures/**/*.svg").expect("should be able to glob `figures/` directory") {
         if let Ok(path) = entry {
             println!("{}", path.as_os_str().to_string_lossy());
         }
@@ -153,28 +154,41 @@ fn list_figures() {
 }
 
 fn create_figure(path: &str) -> std::io::Result<u64> {
-    println!("creating figure {path}");
+    println!("creating figure `{path}`");
 
+    // First get the home dir
     let home_dir = match std::env::var("HOME") {
         Ok(val) => val,
         Err(_) => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                "HOME environment variable not set",
+                "$HOME environment variable not set",
             ))
         }
     };
 
+    // Then copy the template to the new figure
     let template_path = Path::new(&home_dir).join(".config/ifm/template.svg");
-
     std::fs::copy(template_path, Path::new(path))
 }
 
 fn open_figure(path: &str) -> std::io::Result<std::process::Child> {
-    println!("opening figure {path}");
+    println!("opening figure `{path}`");
+
+    if !file_exists(path) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("`{path}` does not exist"),
+        ));
+    }
+
     std::process::Command::new("inkscape")
         .arg(path)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()
+}
+
+fn file_exists(file_path: &str) -> bool {
+    std::fs::metadata(file_path).is_ok()
 }
