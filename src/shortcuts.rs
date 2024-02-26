@@ -31,7 +31,7 @@ pub fn setup_hotkeys(hotkey_manager: &GlobalHotKeyManager) -> KeyboardShortcuts 
             alt_1, alt_2, alt_3, alt_q, alt_w, alt_e, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x,
             alt_space,
         ])
-        .unwrap();
+        .expect("hotkeys should register");
 
     KeyboardShortcuts {
         alt_1,
@@ -121,11 +121,11 @@ impl KeyboardShortcuts {
 
         if event.id == self.alt_z.id() {
             println!("marker:\t\tstart");
-            style.marker_start = Some(true)
+            style.marker_start = Some(true);
         }
         if event.id == self.alt_x.id() {
             println!("marker:\t\tend");
-            style.marker_end = Some(true)
+            style.marker_end = Some(true);
         }
 
         if event.id == self.alt_space.id() {

@@ -83,23 +83,25 @@ fn hotkeys_listener() {
 }
 
 fn autosave_pdf_tex() -> Result<(), notify::Error> {
-    let (tx, rx) = std::sync::mpsc::channel();
-    let tx_c = tx.clone();
-
     // Differentiate between file save events and file scan events
     enum Message {
         Event(notify::Result<notify::Event>),
         Scan(ScanEvent),
     }
 
+    let (tx, rx) = std::sync::mpsc::channel();
+    let tx_c = tx.clone();
+
     // Initialize watcher with that checks for file saves by polling every second
     let mut watcher = PollWatcher::with_initial_scan(
         move |event| {
-            tx_c.send(Message::Event(event)).unwrap();
+            tx_c.send(Message::Event(event))
+                .expect("should be able to send event");
         },
         Config::default().with_poll_interval(Duration::from_secs(1)),
         move |scan_event| {
-            tx.send(Message::Scan(scan_event)).unwrap();
+            tx.send(Message::Scan(scan_event))
+                .expect("should be able to send scan event");
         },
     )?;
 
@@ -112,7 +114,10 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
                 if let Ok(e) = e {
                     for path in e.paths {
                         if path.extension().is_some_and(|ext| ext == "svg") {
-                            let path_stem = path.file_stem().unwrap().to_string_lossy();
+                            let path_stem = path
+                                .file_stem()
+                                .expect("should be able to get file_stem")
+                                .to_string_lossy();
                             let output = std::process::Command::new("inkscape")
                                 .arg("--export-area-page")
                                 .arg("--export-dpi=300")
@@ -121,7 +126,7 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
                                 .arg(format!(
                                     "--export-filename={}",
                                     path.canonicalize()
-                                        .unwrap()
+                                        .expect("should be able to canonicalize path")
                                         .to_string_lossy()
                                         .replace(".svg", ".pdf")
                                 ))
@@ -129,7 +134,9 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
 
                             match output {
                                 Ok(_) => println!("saved as pdf: {path_stem}"),
-                                Err(e) => eprintln!("{} {}", "error saving {path_stem} as pdf:", e),
+                                Err(e) => {
+                                    eprintln!("{} {}", "error saving {path_stem} as pdf:".red(), e)
+                                }
                             }
                         }
                     }
@@ -139,7 +146,10 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
             Message::Scan(e) => {
                 if let Ok(path) = e {
                     if path.extension().is_some_and(|ext| ext == "svg") {
-                        let path_stem = path.file_stem().unwrap().to_string_lossy();
+                        let path_stem = path
+                            .file_stem()
+                            .expect("should be able to get file_stem")
+                            .to_string_lossy();
                         println!("found figure: {path_stem}");
                     }
                 }
@@ -151,10 +161,11 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
 }
 
 fn list_figures() {
-    for entry in glob("figures/**/*.svg").expect("should be able to glob `figures/` directory") {
-        if let Ok(path) = entry {
-            println!("{}", path.as_os_str().to_string_lossy());
-        }
+    for path in glob("figures/**/*.svg")
+        .expect("should be able to glob `figures/` directory")
+        .flatten()
+    {
+        println!("{}", path.as_os_str().to_string_lossy());
     }
 }
 
@@ -162,14 +173,11 @@ fn create_figure(path: &str) -> std::io::Result<u64> {
     println!("creating figure `{path}`");
 
     // First get the home dir
-    let home_dir = match std::env::var("HOME") {
-        Ok(val) => val,
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "$HOME environment variable not set",
-            ))
-        }
+    let Ok(home_dir) = std::env::var("HOME") else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "$HOME environment variable not set",
+        ));
     };
 
     // Then copy the template to the new figure
@@ -189,7 +197,10 @@ fn open_figure(path: &str) -> std::io::Result<std::process::Child> {
     }
 
     // Make sure the file is an SVG
-    if !path.ends_with(".svg") {
+    if !std::path::Path::new(path)
+        .extension()
+        .is_some_and(|ext| ext == "svg")
+    {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             format!("`{path}` is not an SVG file"),
