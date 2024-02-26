@@ -119,6 +119,7 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
                                 .expect("should be able to get file_stem")
                                 .to_string_lossy();
                             let output = std::process::Command::new("inkscape")
+                                .arg(path.to_string_lossy().to_string())
                                 .arg("--export-area-page")
                                 .arg("--export-dpi=300")
                                 .arg("--export-type=pdf")
