@@ -10,11 +10,27 @@ cargo install inkscape-figures-manager
 
 Then, create a template SVG file `$HOME/.config/ifm/template.svg`. This file will be used as a template when creating new figures.
 
-To make opening figures fast, you can use a picker tool like [choose](https://github.com/chipsenkbeil/choose) or [telescope](https://github.com/nvim-telescope/telescope.nvim) if you use NeoVim. See [my dotfiles](https://github.com/cristianpjensen/nvim-latex-config/tree/main/lua) for the extension I made for telescope (copy the `lua/telescope/` and `lua/telescope_inkscape_figures/` directories).
-
 ## Usage
 
-TODO
+The simplest commands are `inkscape-figures-manager list`, `inkscape-figures-manager new <path>`, and `inkscape-figures-manager edit <path>`.
+
+`list` lists all SVG files in all subdirectories from where the command is run. This can be used by a picker to select a figure to edit. I recommend using a picker to quickly open figures from within a project. You can use a picker tool such as [choose](https://github.com/chipsenkbeil/choose). I use [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) in my NeoVim setup. See [my NeoVim config](https://github.com/cristianpjensen/nvim-latex-config/tree/main/lua) for the extension I made for telescope (copy the `lua/telescope/` and `lua/telescope_inkscape_figures/` directories).
+
+`new` creates a new figure with the specified path, and opens it. This command requires a template SVG file in `$HOME/.config/ifm/template.svg`, so make sure to create one.
+
+`edit` opens the inkscape for a specified path. This command will error if the path does not exist, or if the file is not an SVG.
+
+### File watcher
+
+You can start the file watcher and the shortcut listener by executing the following command,
+
+```bash
+inkscape-figures-manager start
+```
+
+This command does two things:
+ 1. Whenever an SVG is saved in any subdirectory where the command was executed, it will compile it as a PDF to be used in LaTeX;
+ 2. It listens for keyboard shortcuts, as defined in the next section.
 
 ### Keyboard shortcuts
 
