@@ -9,7 +9,7 @@ pub struct Style<'a> {
 }
 
 impl Style<'_> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Style {
             fill_color: None,
             fill_opacity: None,
@@ -28,15 +28,15 @@ impl ToString for Style<'_> {
         let mut style_string = "stroke-linejoin:miter;strike-linecap:butt;".to_string();
 
         if let Some(color) = self.fill_color {
-            style_string += &format!("fill:{};", color);
+            style_string += &format!("fill:{color};");
         }
 
         if let Some(opacity) = self.fill_opacity {
-            style_string += &format!("fill-opacity:{};", opacity);
+            style_string += &format!("fill-opacity:{opacity};");
         }
 
         if let Some(color) = self.stroke_color {
-            style_string += &format!("stroke:{};", color);
+            style_string += &format!("stroke:{color};");
         }
 
         if let Some(width) = &self.stroke_width {
@@ -90,9 +90,7 @@ impl ToString for Style<'_> {
             ";
         }
 
-        svg_string += &format!("<inkscape:clipboard style='{style_string}' /></svg>");
-
-        return svg_string;
+        svg_string + &format!("<inkscape:clipboard style='{style_string}' /></svg>")
     }
 }
 
@@ -103,7 +101,7 @@ pub enum StrokeThickness {
 }
 
 impl StrokeThickness {
-    fn pts(&self) -> f32 {
+    const fn pts(&self) -> f32 {
         match self {
             Self::Normal => 0.5308,
             Self::Thick => 1.0616,
@@ -119,7 +117,7 @@ pub enum StrokeDash {
 }
 
 impl StrokeDash {
-    fn dasharray(&self) -> &str {
+    const fn dasharray(&self) -> &str {
         match self {
             Self::Solid => "none",
             Self::Dashed => "3.981,3.981",

@@ -1,7 +1,7 @@
-use std::ffi::c_void;
 use cocoa::base::{id, nil, BOOL, YES};
 use cocoa::foundation::{NSAutoreleasePool, NSInteger, NSString, NSUInteger};
 use objc::{class, msg_send, sel, sel_impl};
+use std::ffi::c_void;
 
 /// Source: [The Clipboard implementation of the Druid
 /// framework](https://github.com/linebender/druid/blob/e53a5ab72c40191b3f92edef9ebf4da07da254f3/druid-shell/src/backend/mac/clipboard.rs#L49)
