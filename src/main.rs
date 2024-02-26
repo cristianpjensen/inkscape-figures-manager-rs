@@ -72,6 +72,7 @@ fn hotkeys_listener() {
 
     let event_loop = EventLoopBuilder::new().build();
 
+    // Listen for hotkey events
     event_loop.run(move |_, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
@@ -85,11 +86,13 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
     let (tx, rx) = std::sync::mpsc::channel();
     let tx_c = tx.clone();
 
+    // Differentiate between file save events and file scan events
     enum Message {
         Event(notify::Result<notify::Event>),
         Scan(ScanEvent),
     }
 
+    // Initialize watcher with that checks for file saves by polling every second
     let mut watcher = PollWatcher::with_initial_scan(
         move |event| {
             tx_c.send(Message::Event(event)).unwrap();
@@ -104,6 +107,7 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
 
     for res in rx {
         match res {
+            // When an SVG is saved, compile it as PDF with TeX
             Message::Event(e) => {
                 if let Ok(e) = e {
                     for path in e.paths {
@@ -131,6 +135,7 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
                     }
                 }
             }
+            // Let the user know when a file has been scanned, indicating that the file is being watched
             Message::Scan(e) => {
                 if let Ok(path) = e {
                     if path.extension().is_some_and(|ext| ext == "svg") {
@@ -175,10 +180,19 @@ fn create_figure(path: &str) -> std::io::Result<u64> {
 fn open_figure(path: &str) -> std::io::Result<std::process::Child> {
     println!("opening figure `{path}`");
 
+    // Make sure the file exists before attempting to open it with inkscape
     if !file_exists(path) {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             format!("`{path}` does not exist"),
+        ));
+    }
+
+    // Make sure the file is an SVG
+    if !path.ends_with(".svg") {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("`{path}` is not an SVG file"),
         ));
     }
 
