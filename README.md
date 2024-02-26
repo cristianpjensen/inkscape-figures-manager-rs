@@ -14,14 +14,11 @@ To make opening figures fast, you can use a picker tool like [choose](https://gi
 
 ## Usage
 
-```bash
-ifm help
-> start  Listen for hotkeys to edit, and watches SVG files in the `figures/` subdirectory and auto-saves as .pdf_tex on SVG save
-> list   Lists all figures for the current document, i.e., all SVGs in the `figures/` subdirectory
-> new    Creates a new figure for the current document. Give the path to the figure, including the `figures/` subdirectory. E.g., `ifm new figures/my_figure.svg`. Make sure that `$HOME/.config/ifm/template.svg` exists, since that will be the template that will be copied to the new file
-> edit   Edits an existing figure for the current document. Give the path to the figure, including the `figures/` subdirectory. E.g., `ifm edit figures/my_figure.svg`
-> help   Print this message or the help of the given subcommand(s)
-```
+TODO
+
+### Keyboard shortcuts
+
+TODO
 
 ## Creating Figures
 
