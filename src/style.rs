@@ -90,9 +90,7 @@ impl ToString for Style<'_> {
             ";
         }
 
-        svg_string += &format!("<inkscape:clipboard style='{style_string}' /></svg>");
-
-        return svg_string;
+        svg_string + &format!("<inkscape:clipboard style='{style_string}' /></svg>")
     }
 }
 

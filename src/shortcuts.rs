@@ -147,7 +147,7 @@ fn set_style(style: &style::Style) {
 }
 
 fn paste_style() {
-    let mut ctx = Context::new().expect("Failed to launch paste context");
+    let mut ctx = Context::new().expect("paste context should launch");
 
     // For OS-specific reasons, it's necessary to wait a moment after
     // creating the context before generating events.

@@ -2,19 +2,19 @@ mod clipboard;
 mod shortcuts;
 mod style;
 
-use std::{path::Path, time::Duration};
-
 use clap::{Parser, Subcommand};
+use colored::Colorize;
 use glob::glob;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager};
 use notify::{poll::ScanEvent, Config, PollWatcher, RecursiveMode, Watcher};
+use std::{path::Path, time::Duration};
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
 
 #[derive(Parser)]
 #[command(
     version,
     about,
-    long_about = "A tool to manage and quickly create technical figures for LaTeX documents, using Inkscape, on macOS."
+    long_about = "Tool to manage and quickly create technical figures for LaTeX documents, using Inkscape, on macOS."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -23,16 +23,17 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Listen for hotkeys to edit, and watches SVG files in the figures/ subdirectory
-    /// and auto-saves as .pdf_tex on SVG save
+    /// Listen for hotkeys to edit, and watches SVG files in the `figures/` subdirectory and auto-saves as .pdf_tex on
+    /// SVG save.
     Start,
-    /// Lists all figures for the current document, i.e., all SVGs in the figures/
-    /// subdirectory
+    /// Lists all figures for the current document, i.e., all SVGs in the `figures/` subdirectory.
     List,
-    /// Creates a new figure for the current document
-    New { name: String },
-    /// Edits an existing figure for the current document
-    Edit { name: String },
+    /// Creates a new figure for the current document. Give the path to the figure, including the `figures/` subdirectory.
+    /// E.g., `ifm new figures/my_figure.svg`.
+    New { path: String },
+    /// Edits an existing figure for the current document. Give the path to the figure, including the `figures/`
+    /// subdirectory. E.g., `ifm edit figures/my_figure.svg`.
+    Edit { path: String },
 }
 
 fn main() {
@@ -42,17 +43,23 @@ fn main() {
         Commands::Start => {
             std::thread::spawn(|| {
                 if let Err(e) = autosave_pdf_tex() {
-                    eprintln!("ERROR: watching figures directory: {}", e);
+                    eprintln!("{} {}", "error watching figures directory:".red(), e);
                 };
             });
             hotkeys_listener();
         }
         Commands::List => list_figures(),
-        Commands::New { name } => {
-            create_figure(name);
-            open_figure(name);
-        }
-        Commands::Edit { name } => open_figure(name),
+        Commands::New { path } => match create_figure(path) {
+            Ok(_) => match open_figure(path) {
+                Ok(_) => {}
+                Err(e) => eprintln!("{} {}", "error opening figure:".red(), e),
+            },
+            Err(e) => eprintln!("{} {}", "error creating figure:".red(), e),
+        },
+        Commands::Edit { path } => match open_figure(path) {
+            Ok(_) => {}
+            Err(e) => eprintln!("{} {}", "error opening figure:".red(), e),
+        },
     }
 }
 
@@ -92,7 +99,7 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
         },
     )?;
 
-    watcher.watch(Path::new("figures"), RecursiveMode::Recursive)?;
+    watcher.watch(Path::new("."), RecursiveMode::Recursive)?;
 
     for res in rx {
         match res {
@@ -117,7 +124,7 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
 
                             match output {
                                 Ok(_) => println!("saved as pdf: {path_stem}"),
-                                Err(e) => eprintln!("ERROR: saving {path_stem} as pdf: {e:#?}"),
+                                Err(e) => eprintln!("{} {}", "error saving {path_stem} as pdf:", e),
                             }
                         }
                     }
@@ -138,19 +145,36 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
 }
 
 fn list_figures() {
-    for entry in glob("figures/*.svg").expect("should be able to glob figures/ directory") {
+    for entry in glob("figures/**/*.svg").expect("should be able to glob figures/ directory") {
         if let Ok(path) = entry {
-            if let Some(filename) = path.file_name() {
-                println!("{}", filename.to_string_lossy());
-            }
+            println!("{}", path.as_os_str().to_string_lossy());
         }
     }
 }
 
-fn create_figure(filename: &str) {
-    println!("Create figure: {}", filename);
+fn create_figure(path: &str) -> std::io::Result<u64> {
+    println!("creating figure {path}");
+
+    let home_dir = match std::env::var("HOME") {
+        Ok(val) => val,
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "HOME environment variable not set",
+            ))
+        }
+    };
+
+    let template_path = Path::new(&home_dir).join(".config/ifm/template.svg");
+
+    std::fs::copy(template_path, Path::new(path))
 }
 
-fn open_figure(filename: &str) {
-    println!("Open figure: {}", filename);
+fn open_figure(path: &str) -> std::io::Result<std::process::Child> {
+    println!("opening figure {path}");
+    std::process::Command::new("inkscape")
+        .arg(path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
 }
