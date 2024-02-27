@@ -8,7 +8,8 @@ A simple CLI tool to manage figures in created with Inkscape. It also provides s
 cargo install inkscape-figures-manager
 ```
 
-Then, create a template SVG file `$HOME/.config/ifm/template.svg`. This file will be used as a template when creating new figures.
+Then, create a template SVG file `$HOME/.config/ifm/template.svg`. This file will be used as a template when creating new figures. An example of a template is `template.svg` in this repository. It defines my frequently used colors and has the correct size for the margin figures I often make.
+
 
 ## Usage
 
