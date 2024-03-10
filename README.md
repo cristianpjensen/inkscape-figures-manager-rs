@@ -84,7 +84,7 @@ style as specified.
 > The program grabs all keyboard interactions while Alt/Option is held. So, no other shortcuts
 > involving Alt/Option will be triggered while it is running.
 
-> ![NOTE]
+> [!NOTE]
 > The defined keyboard shortcuts have no semantic meaning, but are defined to be easily reachable
 > with only the left hand on a US keyboard. 
 
