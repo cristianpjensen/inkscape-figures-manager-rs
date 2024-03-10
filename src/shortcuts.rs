@@ -1,144 +1,119 @@
-use std::thread;
-use std::time::Duration;
-
 use crate::{clipboard, style};
-use global_hotkey::hotkey::{Code, Modifiers};
-use global_hotkey::{hotkey::HotKey, GlobalHotKeyEvent};
-use global_hotkey::{GlobalHotKeyManager, HotKeyState};
-use tfc::{Context, Key, KeyboardContext};
+use rdev;
+use std::{thread, time::Duration};
+use tfc::KeyboardContext;
 
-pub fn setup_hotkeys(hotkey_manager: &GlobalHotKeyManager) -> KeyboardShortcuts {
-    let alt_1 = HotKey::new(Some(Modifiers::ALT), Code::Digit1);
-    let alt_2 = HotKey::new(Some(Modifiers::ALT), Code::Digit2);
-    let alt_3 = HotKey::new(Some(Modifiers::ALT), Code::Digit3);
+pub struct HotkeyListener<'a> {
+    forming_style: bool,
+    style: style::Style<'a>,
+}
 
-    let alt_q = HotKey::new(Some(Modifiers::ALT), Code::KeyQ);
-    let alt_w = HotKey::new(Some(Modifiers::ALT), Code::KeyW);
-    let alt_e = HotKey::new(Some(Modifiers::ALT), Code::KeyE);
+impl HotkeyListener<'_> {
+    pub fn new() -> Self {
+        Self {
+            forming_style: false,
+            style: style::Style::new(),
+        }
+    }
 
-    let alt_a = HotKey::new(Some(Modifiers::ALT), Code::KeyA);
-    let alt_s = HotKey::new(Some(Modifiers::ALT), Code::KeyS);
-    let alt_d = HotKey::new(Some(Modifiers::ALT), Code::KeyD);
-    let alt_f = HotKey::new(Some(Modifiers::ALT), Code::KeyF);
+    pub fn callback(&mut self, event: rdev::Event) -> Option<rdev::Event> {
+        match event.event_type {
+            rdev::EventType::KeyPress(key) => match key {
+                rdev::Key::Alt => {
+                    println!("== starting style ==");
+                    self.forming_style = true;
+                }
+                rdev::Key::Num1
+                | rdev::Key::Num2
+                | rdev::Key::Num3
+                | rdev::Key::KeyQ
+                | rdev::Key::KeyW
+                | rdev::Key::KeyE
+                | rdev::Key::KeyA
+                | rdev::Key::KeyS
+                | rdev::Key::KeyD
+                | rdev::Key::KeyZ
+                | rdev::Key::KeyX => {
+                    if self.forming_style {
+                        update_style(&mut self.style, key);
+                    }
+                }
+                _ => {}
+            },
+            rdev::EventType::KeyRelease(key) => {
+                if key == rdev::Key::Alt && self.forming_style {
+                    println!("== applied style ==");
+                    apply_style(&mut self.style);
 
-    let alt_z = HotKey::new(Some(Modifiers::ALT), Code::KeyZ);
-    let alt_x = HotKey::new(Some(Modifiers::ALT), Code::KeyX);
-    let alt_space = HotKey::new(Some(Modifiers::ALT), Code::Space);
+                    self.forming_style = false;
+                    self.style = style::Style::new();
+                }
+            }
+            _ => {}
+        };
 
-    // Register hotkeys
-    hotkey_manager
-        .register_all(&[
-            alt_1, alt_2, alt_3, alt_q, alt_w, alt_e, alt_a, alt_s, alt_d, alt_f, alt_z, alt_x,
-            alt_space,
-        ])
-        .expect("hotkeys should register");
-
-    KeyboardShortcuts {
-        alt_1,
-        alt_2,
-        alt_3,
-        alt_q,
-        alt_w,
-        alt_e,
-        alt_a,
-        alt_s,
-        alt_d,
-        alt_f,
-        alt_z,
-        alt_x,
-        alt_space,
+        if self.forming_style {
+            None
+        } else {
+            Some(event)
+        }
     }
 }
 
-pub struct KeyboardShortcuts {
-    pub alt_1: HotKey,
-    pub alt_2: HotKey,
-    pub alt_3: HotKey,
-    pub alt_q: HotKey,
-    pub alt_w: HotKey,
-    pub alt_e: HotKey,
-    pub alt_a: HotKey,
-    pub alt_s: HotKey,
-    pub alt_d: HotKey,
-    pub alt_f: HotKey,
-    pub alt_z: HotKey,
-    pub alt_x: HotKey,
-    pub alt_space: HotKey,
-}
-
-impl KeyboardShortcuts {
-    pub fn handler(&self, event: GlobalHotKeyEvent) {
-        // Only handle key down events
-        if event.state == HotKeyState::Released {
-            return;
-        }
-
-        let mut style = style::Style::new();
-
-        if event.id == self.alt_1.id() {
+pub fn update_style(style: &mut style::Style, key: rdev::Key) {
+    match key {
+        rdev::Key::Num1 => {
             println!("stroke width:\tnormal");
-            style.stroke_width = Some(style::StrokeThickness::Normal);
+            style.stroke_width = style::StrokeThickness::Normal;
         }
-        if event.id == self.alt_2.id() {
+        rdev::Key::Num2 => {
             println!("stroke width:\tthick");
-            style.stroke_width = Some(style::StrokeThickness::Thick);
+            style.stroke_width = style::StrokeThickness::Thick;
         }
-        if event.id == self.alt_3.id() {
+        rdev::Key::Num3 => {
             println!("stroke width:\tvery thick");
-            style.stroke_width = Some(style::StrokeThickness::VeryThick);
+            style.stroke_width = style::StrokeThickness::VeryThick;
         }
-
-        if event.id == self.alt_q.id() {
+        rdev::Key::KeyQ => {
             println!("stroke:\t\tsolid");
-            style.stroke_dash = Some(style::StrokeDash::Solid);
+            style.stroke_dash = style::StrokeDash::Solid;
         }
-        if event.id == self.alt_w.id() {
+        rdev::Key::KeyW => {
             println!("stroke:\t\tdashed");
-            style.stroke_dash = Some(style::StrokeDash::Dashed);
+            style.stroke_dash = style::StrokeDash::Dashed;
         }
-        if event.id == self.alt_e.id() {
+        rdev::Key::KeyE => {
             println!("stroke:\t\tdotted");
-            style.stroke_dash = Some(style::StrokeDash::Dotted);
+            style.stroke_dash = style::StrokeDash::Dotted;
         }
-
-        if event.id == self.alt_a.id() {
-            println!("fill:\t\tnone");
-            style.fill_color = Some("none");
-        }
-        if event.id == self.alt_s.id() {
+        rdev::Key::KeyA => {
             println!("fill:\t\twhite");
-            style.fill_color = Some("white");
+            style.fill_color = "white";
+            style.fill_opacity = 1.0;
         }
-        if event.id == self.alt_d.id() {
-            println!("fill:\t\tgray");
-            style.fill_color = Some("#318CE7");
-            style.fill_opacity = Some(0.32);
+        rdev::Key::KeyS => {
+            println!("fill:\t\tgrey");
+            style.fill_color = "black";
+            style.fill_opacity = 0.12;
         }
-        if event.id == self.alt_f.id() {
+        rdev::Key::KeyD => {
             println!("fill:\t\tblack");
-            style.fill_color = Some("black");
+            style.fill_color = "black";
+            style.fill_opacity = 1.0;
         }
-
-        if event.id == self.alt_z.id() {
+        rdev::Key::KeyZ => {
             println!("marker:\t\tstart");
-            style.marker_start = Some(true);
+            style.marker_start = true;
         }
-        if event.id == self.alt_x.id() {
+        rdev::Key::KeyX => {
             println!("marker:\t\tend");
-            style.marker_end = Some(true);
+            style.marker_end = true;
         }
-
-        if event.id == self.alt_space.id() {
-            println!("marker:\t\tnone");
-            style.marker_start = Some(false);
-            style.marker_end = Some(false);
-        }
-
-        set_style(&style);
+        _ => {}
     }
 }
 
-fn set_style(style: &style::Style) {
+fn apply_style(style: &mut style::Style) {
     // put the SVG string with style and proper MIME type (so inkscape
     // recognizes it) on the clipboard and paste style by pressing META+SHIFT+V
     let svg_string = style.to_string();
@@ -147,14 +122,14 @@ fn set_style(style: &style::Style) {
 }
 
 fn paste_style() {
-    let mut ctx = Context::new().expect("paste context should launch");
+    let mut ctx = tfc::Context::new().expect("paste context should launch");
 
     // For OS-specific reasons, it's necessary to wait a moment after
     // creating the context before generating events.
     thread::sleep(Duration::from_millis(10));
-    let _ = ctx.key_down(Key::ControlOrMeta);
-    let _ = ctx.key_down(Key::Shift);
-    let _ = ctx.key_click(Key::V);
-    let _ = ctx.key_up(Key::ControlOrMeta);
-    let _ = ctx.key_up(Key::Shift);
+    let _ = ctx.key_down(tfc::Key::ControlOrMeta);
+    let _ = ctx.key_down(tfc::Key::Shift);
+    let _ = ctx.key_click(tfc::Key::V);
+    let _ = ctx.key_up(tfc::Key::ControlOrMeta);
+    let _ = ctx.key_up(tfc::Key::Shift);
 }

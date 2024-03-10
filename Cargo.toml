@@ -1,6 +1,6 @@
 [package]
 name = "inkscape-figures-manager"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Cristian Perez Jensen <cristianpjensen@gmail.com>"]
 license = "MIT"
@@ -17,8 +17,7 @@ clap = { version = "4.5.1", features = ["derive"] }
 cocoa = "0.25.0"
 colored = "2.1.0"
 glob = "0.3.1"
-global-hotkey = "0.4.2"
 notify = "6.1.1"
 objc = "0.2.7"
-tao = "0.26.0"
+rdev = { version = "0.5.3", features = ["unstable_grab"] }
 tfc = "0.7.0"

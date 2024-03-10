@@ -5,10 +5,9 @@ mod style;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use glob::glob;
-use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager};
 use notify::{poll::ScanEvent, Config, PollWatcher, RecursiveMode, Watcher};
-use std::{path::Path, time::Duration};
-use tao::event_loop::{ControlFlow, EventLoopBuilder};
+use rdev;
+use std::{cell::RefCell, path::Path, rc::Rc, time::Duration};
 
 #[derive(Parser)]
 #[command(
@@ -31,7 +30,19 @@ enum Commands {
     /// Creates a new figure for the current document. Give the path to the figure, including the `figures/` subdirectory.
     /// E.g., `ifm new figures/my_figure.svg`. Make sure that `$HOME/.config/ifm/template.svg` exists, since that will be
     /// the template that will be copied to the new file.
-    New { path: String },
+    New {
+        path: String,
+        /// Prints a LaTeX template for the figure
+        #[arg(short, long, default_value_t = false)]
+        latex: bool,
+        /// Lowercases, replaces spaces by dashes, and adds the file extension to the path
+        #[arg(short, long, default_value_t = false)]
+        format_path: bool,
+        /// Sets the directory of the figure. Can be used in conjunction with `format-path` to set the directory and
+        /// format the path at the same time. E.g., `ifm new my_figure --format-path --directory figures "..."`
+        #[arg(short, long, default_value_t = String::default())]
+        directory: String,
+    },
     /// Edits an existing figure for the current document. Give the path to the figure, including the `figures/`
     /// subdirectory. E.g., `ifm edit figures/my_figure.svg`.
     Edit { path: String },
@@ -50,13 +61,52 @@ fn main() {
             hotkeys_listener();
         }
         Commands::List => list_figures(),
-        Commands::New { path } => match create_figure(path) {
-            Ok(_) => match open_figure(path) {
-                Ok(_) => {}
-                Err(e) => eprintln!("{} {}", "error opening figure:".red(), e),
-            },
-            Err(e) => eprintln!("{} {}", "error creating figure:".red(), e),
-        },
+        Commands::New {
+            path,
+            latex,
+            format_path,
+            directory,
+        } => {
+            let mut path = path.clone();
+
+            if *format_path {
+                path = path.to_lowercase();
+                path = path.replace(" ", "-");
+                path = format!("{path}.svg");
+            }
+
+            if *directory != "" {
+                path = format!("{directory}/{path}");
+            }
+
+            match create_figure(&path) {
+                Ok(_) => match open_figure(&path) {
+                    Ok(_) => {
+                        if *latex {
+                            let path = Path::new(&path);
+                            let no_ext_path = path.with_extension("");
+                            let no_extension = no_ext_path.to_str().unwrap();
+                            let file_stem = path.file_stem().unwrap().to_str().unwrap();
+
+                            println!(
+                                "{}",
+                                vec![
+                                    "\\begin{marginfigure}",
+                                    "    \\centering",
+                                    &format!("    \\incfig{{{}}}", no_extension),
+                                    "    \\caption{}",
+                                    &format!("    \\label{{fig:{}}}", file_stem),
+                                    "\\end{marginfigure}"
+                                ]
+                                .join("\n")
+                            );
+                        }
+                    }
+                    Err(e) => eprintln!("{} {}", "error opening figure:".red(), e),
+                },
+                Err(e) => eprintln!("{} {}", "error creating figure:".red(), e),
+            }
+        }
         Commands::Edit { path } => match open_figure(path) {
             Ok(_) => {}
             Err(e) => eprintln!("{} {}", "error opening figure:".red(), e),
@@ -65,21 +115,14 @@ fn main() {
 }
 
 fn hotkeys_listener() {
-    // Set up hotkey shortcuts
-    let hotkeys_manager = GlobalHotKeyManager::new().expect("hotkey manager should launch");
-    let kbd_shortcuts = shortcuts::setup_hotkeys(&hotkeys_manager);
-    let global_hotkey_channel = GlobalHotKeyEvent::receiver();
+    let hotkeys = Rc::new(RefCell::new(shortcuts::HotkeyListener::new()));
 
-    let event_loop = EventLoopBuilder::new().build();
+    println!("starting hotkeys listener");
 
-    // Listen for hotkey events
-    event_loop.run(move |_, _, control_flow| {
-        *control_flow = ControlFlow::Poll;
-
-        if let Ok(event) = global_hotkey_channel.try_recv() {
-            kbd_shortcuts.handler(event);
-        }
-    });
+    // This will block. We use the grab function to ensure that the hotkeys used with Alt are not passed to Inkscape.
+    if let Err(e) = rdev::grab(move |event| hotkeys.borrow_mut().callback(event)) {
+        eprintln!("{} {:?}", "error listening to hotkeys:".red(), e);
+    }
 }
 
 fn autosave_pdf_tex() -> Result<(), notify::Error> {
@@ -92,7 +135,7 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
     let (tx, rx) = std::sync::mpsc::channel();
     let tx_c = tx.clone();
 
-    // Initialize watcher with that checks for file saves by polling every second
+    // Initialize watcher that checks for file saves by polling every second
     let mut watcher = PollWatcher::with_initial_scan(
         move |event| {
             tx_c.send(Message::Event(event))
@@ -106,6 +149,8 @@ fn autosave_pdf_tex() -> Result<(), notify::Error> {
     )?;
 
     watcher.watch(Path::new("."), RecursiveMode::Recursive)?;
+
+    println!("starting auto-save");
 
     for res in rx {
         match res {
@@ -171,8 +216,6 @@ fn list_figures() {
 }
 
 fn create_figure(path: &str) -> std::io::Result<u64> {
-    println!("creating figure `{path}`");
-
     // First get the home dir
     let Ok(home_dir) = std::env::var("HOME") else {
         return Err(std::io::Error::new(
@@ -187,8 +230,6 @@ fn create_figure(path: &str) -> std::io::Result<u64> {
 }
 
 fn open_figure(path: &str) -> std::io::Result<std::process::Child> {
-    println!("opening figure `{path}`");
-
     // Make sure the file exists before attempting to open it with inkscape
     if !file_exists(path) {
         return Err(std::io::Error::new(
